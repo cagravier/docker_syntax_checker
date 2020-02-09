@@ -1,11 +1,11 @@
 application:
-  name: docker_validator_netcore
-  project: project-docker-syntax-checker
+  name: docker_syntax_checker
+  project: syntax_checker
   cloud_region: aws/eu-west-3
   publicly_accessible: true
 routers:
 - name: main
   routes:
-  - application_name: docker_validator_netcore
+  - application_name: docker_syntax_checker
     paths:
     - /*
