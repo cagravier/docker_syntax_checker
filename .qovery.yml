@@ -1,6 +1,6 @@
 application:
   name: docker_syntax_checker
-  project: syntax_checker
+  project: syntaxchecker
   cloud_region: aws/eu-west-3
   publicly_accessible: true
 routers:
