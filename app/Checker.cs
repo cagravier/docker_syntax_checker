@@ -31,6 +31,18 @@ namespace DockerSyntaxChecker
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex StopsignalRegex = new Regex(@"^stopsignal\s+(SIGABRT|SIGIOT|SIGALRM|SIGVTALRM|SIGPROF|SIGBUS|SIGCHLD|SIGCONT|SIGFPE|SIGHUP|SIGILL|SIGINT|SIGKILL|SIGPIPE|SIGPOLL|SIGRTMIN|SIGRTMAX|SIGQUIT|SIGSEGV|SIGSTOP|SIGSYS|SIGTERM|SIGTSTP|SIGTTIN|SIGTTOU|SIGTRAP|SIGURG|SIGUSR1|SIGUSR2|SIGXCPU|SIGXFSZ|SIGWINCH|-?[0-9]+)\s*$",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex RunBracketsRegex = new Regex(@"^run\s+\[(\s*"".*""\s*)(\,\s*"".*""\s*)*\]\s*$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex RunRegex = new Regex(@"^run\s+\S+.*",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex CmdBracketsRegex = new Regex(@"^cmd\s+\[(\s*"".*""\s*)(\,\s*"".*""\s*)*\]\s*$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex CmdRegex = new Regex(@"^cmd\s+\S+.*",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex LabelEqualRegex = new Regex(@"^label\s+\S+\=.*",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex LabelRegex = new Regex(@"^label\s+\S+\s\S+.*",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static bool Check(string content, out string outputMessage)
         {
             if (string.IsNullOrWhiteSpace(content))
@@ -99,6 +111,12 @@ namespace DockerSyntaxChecker
                 return InstructionType.VOLUME;
             if (IsWorkdir(line))
                 return InstructionType.WORKDIR;
+            if (IsRun(line))
+                return InstructionType.RUN;
+            if (IsCmd(line))
+                return InstructionType.CMD;
+            if (IsLabel(line))
+                return InstructionType.LABEL;
             return InstructionType.Unknown;
         }
         public static bool IsSyntaxParserDirective(string line)
@@ -162,6 +180,29 @@ namespace DockerSyntaxChecker
         public static bool IsStopSignal(string line)
         {
             return StopsignalRegex.IsMatch(line);
+        }
+        // Simplified version of what a shell can parse
+        // If there are nested brackets or commas in incorrect places we dont signal an error
+        // TODO: Improve
+        public static bool IsRun(string line)
+        {
+            var rx = line.Contains("[") ? RunBracketsRegex : RunRegex;
+            return rx.IsMatch(line);
+        }
+        // Simplified version of what a shell can parse
+        // If there are nested brackets or commas in incorrect places we dont signal an error
+        // TODO: Improve
+        public static bool IsCmd(string line)
+        {
+            var rx = line.Contains("[") ? CmdBracketsRegex : CmdRegex;
+            return rx.IsMatch(line);
+        }
+        // Today the doc is inconsistent with the compiler
+        // Docker is simply checking that there are two argument values
+        public static bool IsLabel(string line)
+        {
+            var rx = line.Contains("=") ? LabelEqualRegex : LabelRegex;
+            return rx.IsMatch(line);
         }
     }
 }

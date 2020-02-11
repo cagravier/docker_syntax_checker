@@ -147,5 +147,52 @@ namespace DockerSyntaxCheckerTest
         {
             return Checker.IsStopSignal(input);
         }
+        [TestCase("notarun command ", ExpectedResult = false)]
+        [TestCase("run ", ExpectedResult = false)]
+        [TestCase("run command", ExpectedResult = true)]
+        [TestCase("run command arg1 arg2", ExpectedResult = true)]
+        [TestCase("run [", ExpectedResult = false)]
+        [TestCase("run [command", ExpectedResult = false)]
+        [TestCase("run [command,]", ExpectedResult = false)]
+        [TestCase("run [command]", ExpectedResult = false)]
+        [TestCase("run [\"command\"]", ExpectedResult = true)]
+        [TestCase("run [\"command\", arg]", ExpectedResult = false)]
+        [TestCase("run [\"command\", [arg]", ExpectedResult = false)]
+        //[TestCase("run [\"command\", ]\"arg\"]", ExpectedResult = false)] to be handled in the future
+        [TestCase("run [[\"command\", \"arg\"]]", ExpectedResult = false)]
+        [TestCase("run [\"command\", \"arg\"]", ExpectedResult = true)]
+        public bool CheckerCorrectlyIdentifiesRun(string input)
+        {
+            return Checker.IsRun(input);
+        }
+        [TestCase("notacmd command ", ExpectedResult = false)]
+        [TestCase("cmd ", ExpectedResult = false)]
+        [TestCase("cmd command", ExpectedResult = true)]
+        [TestCase("cmd command arg1 arg2", ExpectedResult = true)]
+        [TestCase("cmd [", ExpectedResult = false)]
+        [TestCase("cmd [", ExpectedResult = false)]
+        [TestCase("cmd [command", ExpectedResult = false)]
+        [TestCase("cmd [command,]", ExpectedResult = false)]
+        [TestCase("cmd [command]", ExpectedResult = false)]
+        [TestCase("cmd [\"command\"]", ExpectedResult = true)]
+        [TestCase("cmd [\"command\", arg]", ExpectedResult = false)]
+        [TestCase("cmd [\"command\", [arg]", ExpectedResult = false)]
+        //[TestCase("cmd [\"command\", ]\"arg\"]", ExpectedResult = false)] To be handled in the future
+        [TestCase("cmd [[\"command\", \"arg\"]]", ExpectedResult = false)]
+        [TestCase("cmd [\"command\", \"arg\"]", ExpectedResult = true)]
+        public bool CheckerCorrectlyIdentifiesCmd(string input)
+        {
+            return Checker.IsCmd(input);
+        }
+        [TestCase("label", ExpectedResult = false)]
+        [TestCase("label  ", ExpectedResult = false)]
+        [TestCase("label  l1", ExpectedResult = false)]
+        [TestCase("label =", ExpectedResult = false)]
+        [TestCase("label  l1 l2", ExpectedResult = true)]
+        [TestCase("label  l1=", ExpectedResult = true)]
+        public bool CheckerCorrectlyIdentifiesLabel(string input)
+        {
+            return Checker.IsLabel(input);
+        }
     }
 }
