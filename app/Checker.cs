@@ -5,6 +5,32 @@ namespace DockerSyntaxChecker
 {
     public static class Checker
     {
+        private static readonly Regex SyntaxRegex = new Regex(@"^\#\s*syntax\s*\=.+",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex EscapeRegex = new Regex(@"^\#\s*escape\s*\=\s*[\\|\`]",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex CommentRegex = new Regex(@"^\#.*",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex ArgEqualRegex = new Regex(@"^arg\s+\S+\=\S+",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex ArgRegex = new Regex(@"^arg\s+\S+",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex EnvEqualRegex = new Regex(@"^env\s+\S+\=\S+.*",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex EnvRegex = new Regex(@"^env\s+\S+\s+\S.*",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex VolumeRegex = new Regex(@"^volume\s+\S+.*",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex UserRegex = new Regex(@"^user\s+\S+.*",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex WorkdirRegex = new Regex(@"^workdir\s+\S+.*",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex FromRegex = new Regex(@"^from\s+\S+\s*$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex OnbuildRegex = new Regex(@"^onbuild\s+\S+.*",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex StopsignalRegex = new Regex(@"^stopsignal\s+(SIGABRT|SIGIOT|SIGALRM|SIGVTALRM|SIGPROF|SIGBUS|SIGCHLD|SIGCONT|SIGFPE|SIGHUP|SIGILL|SIGINT|SIGKILL|SIGPIPE|SIGPOLL|SIGRTMIN|SIGRTMAX|SIGQUIT|SIGSEGV|SIGSTOP|SIGSYS|SIGTERM|SIGTSTP|SIGTTIN|SIGTTOU|SIGTRAP|SIGURG|SIGUSR1|SIGUSR2|SIGXCPU|SIGXFSZ|SIGWINCH|-?[0-9]+)\s*$",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
         public static bool Check(string content, out string outputMessage)
         {
             if (string.IsNullOrWhiteSpace(content))
@@ -18,7 +44,6 @@ namespace DockerSyntaxChecker
             foreach (var line in lines)
             {
                 //TODO: handle line continuation
-                //TODO: handle empty lines
                 var normalizedLine = line.TrimStart();
                 if (normalizedLine.Length == 0)
                 {
@@ -78,19 +103,11 @@ namespace DockerSyntaxChecker
         }
         public static bool IsSyntaxParserDirective(string line)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                return false;
-            Regex rx = new Regex(@"^\#\s*syntax\s*\=.+",
-                RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            return rx.IsMatch(line);
+            return SyntaxRegex.IsMatch(line);
         }
         public static bool IsEscapeParserDirective(string line)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                return false;
-            Regex rx = new Regex(@"^\#\s*escape\s*\=\s*[\\|\`]",
-                RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            return rx.IsMatch(line);
+            return EscapeRegex.IsMatch(line);
         }
         public static bool IsParserDirective(string line)
         {
@@ -99,102 +116,52 @@ namespace DockerSyntaxChecker
         //TODO: line continuation
         public static bool IsComment(string line)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                return false;
-            Regex rx = new Regex(@"^\#.*",
-                RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            return rx.IsMatch(line) && !IsParserDirective(line) && !line.EndsWith("\\");
+            return CommentRegex.IsMatch(line) && !IsParserDirective(line) && !line.EndsWith("\\");
         }
         public static bool IsArg(string line)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                return false;
-            Regex rx;
-            //TODO: try to make it better
-            if(line.Contains("="))
-                rx = new Regex(@"^arg\s+\S+\=\S+",
-                    RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            else
-            {
-                rx = new Regex(@"^arg\s+\S+",
-                    RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            }
+            //TODO: try to make it a single regex
+            Regex rx = line.Contains("=") ? ArgEqualRegex : ArgRegex;
             return rx.IsMatch(line);
         }
-        // Although the doc says that env can defined multiple key values on the same line
+        // Although the doc says that env can define multiple key values on the same line
         // In reality docker is only checking the syntax is correct for the first key value pair
         // Its not specified in the doc but when using syntax with = spaces around it are not allowed
         //TODO: case with ENV \\=value should be an error
         public static bool IsEnv(string line)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                return false;
-            Regex rx;
-            if (line.Contains("="))
-            {
-                rx = new Regex(@"^env\s+\S+\=\S+.*",
-                    RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            }
-            else
-            {
-                rx = new Regex(@"^env\s+\S+\s+\S.*",
-                    RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            }
+            //TODO: try to make it a single regex
+            Regex rx = line.Contains("=") ? EnvEqualRegex : EnvRegex;
             return rx.IsMatch(line);
         }
         // Docker build does not seem to care about the syntax proposed for Volume
         // For example Volume [\" does not cause a syntax error
-        // TODO: handle case of line continuation
         public static bool IsVolume(string line)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                return false;
-            Regex rx = new Regex(@"^volume\s+\S+.*",
-                RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            return rx.IsMatch(line);
+            return VolumeRegex.IsMatch(line);
         }
         public static bool IsUser(string line)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                return false;
-            Regex rx = new Regex(@"^user\s+\S+.*",
-                RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            return rx.IsMatch(line);
+            return UserRegex.IsMatch(line);
         }
         public static bool IsWorkdir(string line)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                return false;
-            Regex rx = new Regex(@"^workdir\s+\S+.*",
-                RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            return rx.IsMatch(line);
+            return WorkdirRegex.IsMatch(line);
         }
         public static bool IsFrom(string line)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                return false;
-            Regex rx = new Regex(@"^from\s+\S+\s*$",
-                RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            return rx.IsMatch(line);
+            return FromRegex.IsMatch(line);
         }
         //TODO: Chaining onbuild is not allowed
         public static bool IsOnbuild(string line)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                return false;
-            Regex rx = new Regex(@"^onbuild\s+\S+.*",
-                RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            return rx.IsMatch(line);
+            return OnbuildRegex.IsMatch(line);
         }
         // Today the doc is inconsistent with the compiler
         // The value of stopsignal can be a signed number contrary to the doc
         public static bool IsStopSignal(string line)
         {
-            if (string.IsNullOrWhiteSpace(line))
-                return false;
-            Regex rx = new Regex(@"^stopsignal\s+(SIGABRT|SIGIOT|SIGALRM|SIGVTALRM|SIGPROF|SIGBUS|SIGCHLD|SIGCONT|SIGFPE|SIGHUP|SIGILL|SIGINT|SIGKILL|SIGPIPE|SIGPOLL|SIGRTMIN|SIGRTMAX|SIGQUIT|SIGSEGV|SIGSTOP|SIGSYS|SIGTERM|SIGTSTP|SIGTTIN|SIGTTOU|SIGTRAP|SIGURG|SIGUSR1|SIGUSR2|SIGXCPU|SIGXFSZ|SIGWINCH|-?[0-9]+)\s*$",
-                    RegexOptions.Compiled | RegexOptions.IgnoreCase);
-            return rx.IsMatch(line);
+            return StopsignalRegex.IsMatch(line);
         }
     }
 }
